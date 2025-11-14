@@ -7,17 +7,17 @@ from flask_bcrypt import Bcrypt
 from wtforms import StringField, PasswordField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
 
-# --- UYGULAMA YAPILANDIRMASI ---
+# --- APPLICATION CONFIGURATION ---
 app = Flask(__name__)
 
-# Render Ortam Değişkeni Kontrolü: Gizli anahtarın tanımlı olmasını garanti eder.
+# Render Environment Variable Check: Ensures SECRET_KEY is defined.
 SECRET_KEY = os.environ.get('SECRET_KEY')
 if not SECRET_KEY:
-    # Bu hatayı alıyorsanız, Render Environment sekmesine SECRET_KEY eklenmemiş demektir.
+    # This error should be raised if SECRET_KEY is not set in Render Environment variables.
     raise ValueError("FATAL ERROR: SECRET_KEY environment variable not set. Please set it in Render.")
 app.config['SECRET_KEY'] = SECRET_KEY
 
-# Veritabanı Yolunu Tanımlama: Render'da yazılabilir olan /tmp/ klasörünü kullanır.
+# Database Path Definition: Uses the /tmp/ directory which is writable on Render for SQLite.
 db_path = os.environ.get('DATABASE_URL', 'sqlite:////tmp/site.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -27,9 +27,9 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login' 
 login_manager.login_message_category = 'info'
-login_manager.login_message = "Bu sayfaya erişmek için giriş yapmalısınız."
+login_manager.login_message = "Bu sayfaya erişmek için giriş yapmalısınız." # User visible message
 
-# --- MODELLER ---
+# --- MODELS ---
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
@@ -63,7 +63,7 @@ class Post(db.Model):
     def __repr__(self):
         return f"Post('{self.content[:20]}...', '{self.date_posted}')"
 
-# --- FORMLAR ---
+# --- FORMS ---
 class RegistrationForm(FlaskForm):
     username = StringField('Kullanıcı Adı', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
@@ -95,31 +95,39 @@ class PostForm(FlaskForm):
     content = TextAreaField('Cevap', validators=[DataRequired()])
     submit = SubmitField('Cevapla')
 
-# --- YARDIMCI FONKSİYONLAR ---
+# --- HELPER FUNCTIONS ---
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
 def create_initial_admin():
-    """Veritabanında admin hesabı yoksa varsayılan admini oluşturur."""
+    """Ensures a default admin account exists in the database."""
     if User.query.filter_by(is_admin=True).first() is None:
         hashed_password = bcrypt.generate_password_hash('admin123').decode('utf-8')
         admin_user = User(username='admin', email='admin@forum.com', password=hashed_password, is_admin=True)
         db.session.add(admin_user)
         db.session.commit()
-        print("!!! Varsayılan admin hesabı oluşturuldu: admin/admin123 !!!")
+        # This will be visible in Render logs on deployment
+        print("!!! Default admin account created: admin/admin123 !!!")
 
-# --- ROTALAR (SON HATA ÇÖZÜMÜ) ---
 
-# @app.route("/") rotasına ulaşılamadığı hatası çözüldü (TemplateNotFound hatası, büyük/küçük harf kontrolü ile çözüldü).
+# !!! CRITICAL FIX FOR RENDER DEPLOYMENT !!!
+# This block runs when the application context is created, ensuring that the
+# database tables are created on every Gunicorn startup (solving 'no such table' error).
+with app.app_context():
+    db.create_all() # Create tables (if they do not exist)
+    create_initial_admin() # Create admin user (if not already existing)
+
+
+# --- ROUTES ---
 
 @app.route("/")
 @app.route("/index")
 def index():
+    # This query should now work without 'no such table' error.
     threads = Thread.query.order_by(Thread.date_posted.desc()).all()
     return render_template('index.html', title='Anasayfa', threads=threads)
 
-# 'login' fonksiyonu NameError hatası çözüldü (url_for('login') artık çalışacak)
 @app.route("/login", methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -137,7 +145,6 @@ def login():
             flash('Giriş başarısız. Lütfen e-posta ve şifrenizi kontrol edin.', 'danger')
     return render_template('login.html', title='Giriş Yap', form=form)
 
-# 'register' fonksiyonu NameError hatası çözüldü (url_for('register') artık çalışacak)
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
@@ -184,9 +191,10 @@ def thread_detail(thread_id):
         db.session.add(post)
         db.session.commit()
         flash('Cevabınız başarıyla eklendi!', 'success')
+        # Redirect to the thread detail, ensuring the new post is visible
         return redirect(url_for('thread_detail', thread_id=thread.id))
     
-    # Yeni eklenen cevabın hemen görünmesi için sorguyu tekrar çalıştırıyoruz.
+    # Retrieve posts for the thread, ordered oldest first
     posts = Post.query.filter_by(thread_id=thread.id).order_by(Post.date_posted.asc()).all()
     
     return render_template('thread_detail.html', title=thread.title, thread=thread, posts=posts, form=form)
@@ -195,8 +203,9 @@ def thread_detail(thread_id):
 @login_required
 def delete_thread(thread_id):
     thread = Thread.query.get_or_404(thread_id)
+    # Check if the user is the thread author OR an admin
     if thread.author != current_user and not current_user.is_admin:
-        abort(403) # Yetkisiz erişim
+        abort(403) # Forbidden access
     
     db.session.delete(thread)
     db.session.commit()
@@ -208,15 +217,16 @@ def delete_thread(thread_id):
 def delete_post(post_id):
     post = Post.query.get_or_404(post_id)
     thread_id = post.thread.id
+    # Check if the user is the post author OR an admin
     if post.author != current_user and not current_user.is_admin:
-        abort(403) # Yetkisiz erişim
+        abort(403) # Forbidden access
         
     db.session.delete(post)
     db.session.commit()
     flash('Cevap başarıyla silindi.', 'success')
     return redirect(url_for('thread_detail', thread_id=thread_id))
 
-# Admin paneli (Opsiyonel)
+# Admin panel (Optional)
 @app.route("/admin_panel")
 @login_required
 def admin_panel():
@@ -228,24 +238,22 @@ def admin_panel():
     return render_template('admin_panel.html', title='Admin Paneli', users=users, threads=threads, posts=posts)
 
 
-# --- HATA YÖNETİMİ ---
+# --- ERROR HANDLING ---
 
 @app.errorhandler(404)
 def error_404(error):
+    # This assumes you have templates/errors/404.html
     return render_template('errors/404.html'), 404
 
 @app.errorhandler(403)
 def error_403(error):
+    # This assumes you have templates/errors/403.html
     return render_template('errors/403.html'), 403
     
-# --- UYGULAMA BAŞLATMA (YEREL TEST İÇİN) ---
+# --- APPLICATION START (For Local Testing Only - Not executed by Gunicorn) ---
 if __name__ == "__main__":
-    with app.app_context():
-        # Veritabanını oluşturur ve ilk admini ekler
-        db.create_all()
-        create_initial_admin()
-        
     port = int(os.environ.get("PORT", 5000))
+    # Note: DB creation block moved outside 'if __name__ == "__main__":' to ensure it runs on Render
     app.run(host='0.0.0.0', port=port, debug=True)
 
-# Gunicorn, uygulamayı buradan çalıştırır. (app = Flask(...))
+# Gunicorn runs the app from here. (app = Flask(...))
