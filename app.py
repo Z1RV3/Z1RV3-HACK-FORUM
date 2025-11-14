@@ -292,4 +292,4 @@ def internal_error(error):
     db.session.rollback()
     return render_template('errors/500.html'), 500
 
-# Gunicorn, uygulamayı buradan çalıştırır. (app = Flask(...))
+# Gunicorn, uygulamayı buradan çalıştırır. (app = Flask(...)) # CACHE FIX
