@@ -6,6 +6,7 @@ from flask_wtf import FlaskForm
 from flask_bcrypt import Bcrypt
 from wtforms import StringField, PasswordField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
+from datetime import datetime
 
 # --- APPLICATION CONFIGURATION ---
 app = Flask(__name__)
@@ -13,11 +14,13 @@ app = Flask(__name__)
 # Render Environment Variable Check: Ensures SECRET_KEY is defined.
 SECRET_KEY = os.environ.get('SECRET_KEY')
 if not SECRET_KEY:
-    # This error should be raised if SECRET_KEY is not set in Render Environment variables.
+    # Bu hata, Render Environment sekmesinde SECRET_KEY ayarlanmadıysa ortaya çıkar.
     raise ValueError("FATAL ERROR: SECRET_KEY environment variable not set. Please set it in Render.")
 app.config['SECRET_KEY'] = SECRET_KEY
 
 # Database Path Definition: Uses the /tmp/ directory which is writable on Render for SQLite.
+# NOTE: Using a persistent database like PostgreSQL is recommended for production, 
+# but for a simple SQLite Flask app on Render, /tmp/ is the only writable location.
 db_path = os.environ.get('DATABASE_URL', 'sqlite:////tmp/site.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -46,9 +49,11 @@ class Thread(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    date_posted = db.Column(db.DateTime, nullable=False, default=db.func.now())
+    # Using datetime.utcnow for timezone-aware storage (recommended over func.now() in some setups)
+    date_posted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow) 
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    posts = db.relationship('Post', backref='thread', lazy=True, cascade="all, delete-orphan")
+    # Cascade ensures posts are deleted when the thread is deleted
+    posts = db.relationship('Post', backref='thread', lazy=True, cascade="all, delete-orphan") 
 
     def __repr__(self):
         return f"Thread('{self.title}', '{self.date_posted}')"
@@ -56,7 +61,7 @@ class Thread(db.Model):
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
-    date_posted = db.Column(db.DateTime, nullable=False, default=db.func.now())
+    date_posted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     thread_id = db.Column(db.Integer, db.ForeignKey('thread.id'), nullable=False)
 
@@ -68,7 +73,7 @@ class RegistrationForm(FlaskForm):
     username = StringField('Kullanıcı Adı', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Şifre', validators=[DataRequired()])
-    confirm_password = PasswordField('Şifreyi Onayla', validators=[DataRequired(), EqualTo('password')])
+    confirm_password = PasswordField('Şifreyi Onayla', validators=[DataRequired(), EqualTo('password', message='Şifreler eşleşmiyor.')])
     submit = SubmitField('Kayıt Ol')
 
     def validate_username(self, username):
@@ -101,30 +106,41 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 def create_initial_admin():
-    """Ensures a default admin account exists in the database."""
+    """Veritabanında admin hesabı yoksa varsayılan admini oluşturur."""
+    # Check if any user with admin rights exists
     if User.query.filter_by(is_admin=True).first() is None:
-        hashed_password = bcrypt.generate_password_hash('admin123').decode('utf-8')
-        admin_user = User(username='admin', email='admin@forum.com', password=hashed_password, is_admin=True)
-        db.session.add(admin_user)
-        db.session.commit()
-        # This will be visible in Render logs on deployment
-        print("!!! Default admin account created: admin/admin123 !!!")
+        # Also check if an admin user with the specific username exists (to prevent duplicates if the first check is insufficient)
+        if User.query.filter_by(username='admin').first() is None:
+            hashed_password = bcrypt.generate_password_hash('admin123').decode('utf-8')
+            admin_user = User(username='admin', email='admin@forum.com', password=hashed_password, is_admin=True)
+            db.session.add(admin_user)
+            db.session.commit()
+            print("!!! Varsayılan admin hesabı oluşturuldu: admin/admin123 !!!")
+        else:
+             print("!!! Admin hesabı zaten mevcut (admin@forum.com) !!!")
+    else:
+        print("!!! En az bir admin hesabı mevcut, yeni admin oluşturulmadı !!!")
 
 
 # !!! CRITICAL FIX FOR RENDER DEPLOYMENT !!!
-# This block runs when the application context is created, ensuring that the
-# database tables are created on every Gunicorn startup (solving 'no such table' error).
+# This block executes immediately after defining the Flask app and ensures
+# the database structure is initialized on every Gunicorn startup.
 with app.app_context():
-    db.create_all() # Create tables (if they do not exist)
-    create_initial_admin() # Create admin user (if not already existing)
+    try:
+        db.create_all() # Create tables (if they do not exist)
+        create_initial_admin() # Create admin user (if not already existing)
+        print("Veritabanı başlatma işlemi tamamlandı.")
+    except Exception as e:
+        print(f"HATA: Veritabanı başlatılırken bir hata oluştu: {e}")
+# !!! FIX ENDS HERE !!!
 
 
-# --- ROUTES ---
+# --- RUTES (ROUTES) ---
 
 @app.route("/")
 @app.route("/index")
 def index():
-    # This query should now work without 'no such table' error.
+    # Fetch all threads, ordered by newest first
     threads = Thread.query.order_by(Thread.date_posted.desc()).all()
     return render_template('index.html', title='Anasayfa', threads=threads)
 
@@ -184,6 +200,7 @@ def thread_detail(thread_id):
     form = PostForm()
     if form.validate_on_submit():
         if not current_user.is_authenticated:
+            # Although the template should hide the form, this is a safety check
             flash("Cevap yazmak için giriş yapmalısınız.", 'warning')
             return redirect(url_for('login', next=request.url))
             
@@ -191,7 +208,7 @@ def thread_detail(thread_id):
         db.session.add(post)
         db.session.commit()
         flash('Cevabınız başarıyla eklendi!', 'success')
-        # Redirect to the thread detail, ensuring the new post is visible
+        # Redirect to the thread detail to clear the form and show the new post
         return redirect(url_for('thread_detail', thread_id=thread.id))
     
     # Retrieve posts for the thread, ordered oldest first
@@ -238,22 +255,4 @@ def admin_panel():
     return render_template('admin_panel.html', title='Admin Paneli', users=users, threads=threads, posts=posts)
 
 
-# --- ERROR HANDLING ---
-
-@app.errorhandler(404)
-def error_404(error):
-    # This assumes you have templates/errors/404.html
-    return render_template('errors/404.html'), 404
-
-@app.errorhandler(403)
-def error_403(error):
-    # This assumes you have templates/errors/403.html
-    return render_template('errors/403.html'), 403
-    
-# --- APPLICATION START (For Local Testing Only - Not executed by Gunicorn) ---
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    # Note: DB creation block moved outside 'if __name__ == "__main__":' to ensure it runs on Render
-    app.run(host='0.0.0.0', port=port, debug=True)
-
-# Gunicorn runs the app from here. (app = Flask(...))
+# --- ERROR HANDLING (Requires templates/errors/404.html and 403.html) ---
