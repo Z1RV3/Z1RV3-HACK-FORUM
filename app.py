@@ -19,8 +19,6 @@ if not SECRET_KEY:
 app.config['SECRET_KEY'] = SECRET_KEY
 
 # Database Path Definition: Uses the /tmp/ directory which is writable on Render for SQLite.
-# NOTE: Using a persistent database like PostgreSQL is recommended for production, 
-# but for a simple SQLite Flask app on Render, /tmp/ is the only writable location.
 db_path = os.environ.get('DATABASE_URL', 'sqlite:////tmp/site.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -107,9 +105,7 @@ def load_user(user_id):
 
 def create_initial_admin():
     """Veritabanında admin hesabı yoksa varsayılan admini oluşturur."""
-    # Check if any user with admin rights exists
     if User.query.filter_by(is_admin=True).first() is None:
-        # Also check if an admin user with the specific username exists (to prevent duplicates if the first check is insufficient)
         if User.query.filter_by(username='admin').first() is None:
             hashed_password = bcrypt.generate_password_hash('admin123').decode('utf-8')
             admin_user = User(username='admin', email='admin@forum.com', password=hashed_password, is_admin=True)
@@ -122,9 +118,7 @@ def create_initial_admin():
         print("!!! En az bir admin hesabı mevcut, yeni admin oluşturulmadı !!!")
 
 
-# !!! CRITICAL FIX FOR RENDER DEPLOYMENT !!!
-# This block executes immediately after defining the Flask app and ensures
-# the database structure is initialized on every Gunicorn startup.
+# !!! CRITICAL FIX FOR RENDER DEPLOYMENT: db.create_all() and admin creation are done here !!!
 with app.app_context():
     try:
         db.create_all() # Create tables (if they do not exist)
@@ -139,7 +133,8 @@ with app.app_context():
 
 @app.route("/")
 @app.route("/index")
-def index():
+# CRITICAL FIX: Changed function name from 'index' to 'home' to resolve 'home' BuildError in templates.
+def home():
     # Fetch all threads, ordered by newest first
     threads = Thread.query.order_by(Thread.date_posted.desc()).all()
     return render_template('index.html', title='Anasayfa', threads=threads)
@@ -147,7 +142,7 @@ def index():
 @app.route("/login", methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        return redirect(url_for('home')) # FIX: Use 'home'
     
     form = LoginForm()
     if form.validate_on_submit():
@@ -156,7 +151,7 @@ def login():
             login_user(user)
             next_page = request.args.get('next')
             flash(f'Giriş başarılı, hoş geldiniz {user.username}!', 'success')
-            return redirect(next_page or url_for('index'))
+            return redirect(next_page or url_for('home')) # FIX: Use 'home'
         else:
             flash('Giriş başarısız. Lütfen e-posta ve şifrenizi kontrol edin.', 'danger')
     return render_template('login.html', title='Giriş Yap', form=form)
@@ -164,7 +159,7 @@ def login():
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        return redirect(url_for('home')) # FIX: Use 'home'
     
     form = RegistrationForm()
     if form.validate_on_submit():
@@ -180,7 +175,7 @@ def register():
 def logout():
     logout_user()
     flash('Başarıyla çıkış yaptınız.', 'success')
-    return redirect(url_for('index'))
+    return redirect(url_for('home')) # FIX: Use 'home'
 
 @app.route("/thread/new", methods=['GET', 'POST'])
 @login_required
@@ -190,7 +185,6 @@ def new_thread():
         thread = Thread(title=form.title.data, content=form.content.data, author=current_user)
         db.session.add(thread)
         db.session.commit()
-        flash('Yeni konu başarıyla oluşturuldu!', 'success')
         return redirect(url_for('thread_detail', thread_id=thread.id))
     return render_template('create_thread.html', title='Yeni Konu', form=form)
 
@@ -200,7 +194,6 @@ def thread_detail(thread_id):
     form = PostForm()
     if form.validate_on_submit():
         if not current_user.is_authenticated:
-            # Although the template should hide the form, this is a safety check
             flash("Cevap yazmak için giriş yapmalısınız.", 'warning')
             return redirect(url_for('login', next=request.url))
             
@@ -208,10 +201,8 @@ def thread_detail(thread_id):
         db.session.add(post)
         db.session.commit()
         flash('Cevabınız başarıyla eklendi!', 'success')
-        # Redirect to the thread detail to clear the form and show the new post
         return redirect(url_for('thread_detail', thread_id=thread.id))
     
-    # Retrieve posts for the thread, ordered oldest first
     posts = Post.query.filter_by(thread_id=thread.id).order_by(Post.date_posted.asc()).all()
     
     return render_template('thread_detail.html', title=thread.title, thread=thread, posts=posts, form=form)
@@ -220,21 +211,19 @@ def thread_detail(thread_id):
 @login_required
 def delete_thread(thread_id):
     thread = Thread.query.get_or_404(thread_id)
-    # Check if the user is the thread author OR an admin
     if thread.author != current_user and not current_user.is_admin:
         abort(403) # Forbidden access
     
     db.session.delete(thread)
     db.session.commit()
     flash('Konu başarıyla silindi.', 'success')
-    return redirect(url_for('index'))
+    return redirect(url_for('home')) # FIX: Use 'home'
 
 @app.route("/post/<int:post_id>/delete", methods=['POST'])
 @login_required
 def delete_post(post_id):
     post = Post.query.get_or_404(post_id)
     thread_id = post.thread.id
-    # Check if the user is the post author OR an admin
     if post.author != current_user and not current_user.is_admin:
         abort(403) # Forbidden access
         
@@ -256,3 +245,16 @@ def admin_panel():
 
 
 # --- ERROR HANDLING (Requires templates/errors/404.html and 403.html) ---
+
+@app.errorhandler(404)
+def error_404(error):
+    return render_template('errors/404.html'), 404
+
+@app.errorhandler(403)
+def error_403(error):
+    return render_template('errors/403.html'), 403
+    
+# --- APPLICATION START (For Local Testing Only - Not executed by Gunicorn) ---
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
