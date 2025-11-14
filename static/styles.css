@@ -1,0 +1,310 @@
+/* --- Temel Sıfırlamalar ve Yazı Tipi --- */
+body {
+    background-color: #1a1a1a;
+    color: #00ff00;
+    font-family: 'Courier Prime', monospace;
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+}
+
+a {
+    color: #00ff00;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+a:hover {
+    color: #00cccc;
+}
+
+/* --- Başlık (Header) Alanı --- */
+.site-header {
+    background-color: #0d0d0d;
+    padding: 15px 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #00ff00;
+}
+
+.logo {
+    font-size: 2.5em;
+    font-weight: 700;
+    text-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00;
+}
+
+.main-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+}
+
+.main-nav ul li {
+    margin-left: 20px;
+}
+
+.login-btn {
+    border: 1px solid #00ff00;
+    padding: 5px 10px;
+    text-shadow: none;
+}
+
+/* --- Ana İçerik Alanı --- */
+.content-area {
+    padding: 40px 50px;
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 70vh;
+}
+
+.flash-message {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-left: 5px solid;
+    font-weight: bold;
+}
+.flash-success {
+    background-color: #103310;
+    border-color: #00ff00;
+    color: #00ff00;
+}
+.flash-danger {
+    background-color: #331010;
+    border-color: #ff0000;
+    color: #ff0000;
+}
+.flash-info, .flash-warning {
+    background-color: #333310;
+    border-color: #ffaa00;
+    color: #ffaa00;
+}
+
+
+/* --- Banner ve Logo --- */
+.banner-section {
+    text-align: center;
+    margin-bottom: 50px;
+    padding: 30px;
+    background-color: #222222;
+    border: 1px solid #00ff00;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+}
+
+.z1rv3-image {
+    width: 200px;
+    height: auto;
+    border: 2px solid #00ff00;
+    box-shadow: 0 0 10px #00ff00;
+    animation: flicker 1.5s infinite alternate; 
+}
+
+@keyframes flicker {
+    0% { opacity: 1; }
+    50% { opacity: 0.98; }
+    100% { opacity: 1; }
+}
+
+.tagline {
+    font-size: 1.2em;
+    margin-top: 20px;
+    color: #ff00ff;
+    text-shadow: 0 0 4px #ff00ff;
+}
+
+/* --- Forum Konu Listesi --- */
+.forum-list h2 {
+    color: #00cccc;
+    border-bottom: 1px dashed #00ff00;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.topic-item {
+    background-color: #0d0d0d;
+    border: 1px solid #333333;
+    padding: 15px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 5px solid #00ff00;
+    transition: background-color 0.2s;
+}
+
+.topic-item:hover {
+    background-color: #151515;
+}
+
+.no-topics {
+    text-align: center;
+    color: #ff00ff;
+    padding: 20px;
+    border: 1px dashed #333333;
+}
+
+.topic-title {
+    font-weight: 700;
+}
+
+.topic-title-link {
+    width: 70%;
+}
+
+.topic-stats {
+    font-size: 0.9em;
+    color: #999999;
+}
+
+/* --- Form Alanları --- */
+.form-container {
+    max-width: 450px;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: #111111; 
+    border: 1px solid #00ff00; 
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5); 
+}
+
+.form-container h2 {
+    color: #00cccc; 
+    text-align: center;
+    border-bottom: 1px dashed #00ff00;
+    padding-bottom: 10px;
+    margin-bottom: 25px;
+}
+
+.form-field {
+    border: 1px solid #333333;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.form-field legend {
+    color: #ff00ff; 
+    padding: 0 10px;
+    font-size: 1.1em;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #00ff00; 
+    font-weight: bold;
+}
+
+.text-input {
+    width: 95%;
+    padding: 10px;
+    background-color: #0a0a0a;
+    color: #00ff00; 
+    border: 1px solid #00ff00;
+    outline: none;
+    font-family: 'Courier Prime', monospace;
+    transition: box-shadow 0.2s;
+}
+
+.text-input:focus {
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.8); 
+    border-color: #00cccc;
+}
+
+input[type="submit"] {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    margin-top: 20px;
+    background-color: #00cc00;
+    color: #0d0d0d; 
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1.1em;
+    transition: background-color 0.3s, transform 0.1s;
+}
+
+input[type="submit"]:hover {
+    background-color: #00ff00;
+    transform: translateY(-1px);
+}
+
+.error-text {
+    color: #ff0000;
+    font-size: 0.9em;
+    display: block;
+    margin-top: 5px;
+}
+
+.login-prompt {
+    text-align: center;
+    margin-top: 20px;
+    color: #aaaaaa;
+}
+
+.login-prompt a {
+    color: #00cccc;
+    font-weight: bold;
+}
+
+/* --- Konu Detay Stilleri --- */
+.thread-detail {
+    background-color: #111111;
+    padding: 30px;
+    border: 1px solid #00cccc;
+    margin-bottom: 30px;
+}
+
+.thread-detail h2 {
+    color: #00ff00;
+    border-bottom: 1px dashed #00ff00;
+    padding-bottom: 10px;
+}
+
+.thread-meta {
+    font-size: 0.9em;
+    color: #999999;
+    margin-bottom: 20px;
+}
+
+.thread-content {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #0a0a0a;
+    border-left: 3px solid #ff00ff;
+}
+
+/* --- Yorumlar Bölümü --- */
+.comments h3 {
+    color: #ff00ff;
+    border-bottom: 1px solid #ff00ff;
+    padding-bottom: 10px;
+    margin-top: 30px;
+}
+
+.comment-item {
+    background-color: #0d0d0d;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid #333333;
+}
+
+.comment-author {
+    color: #00cccc;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+/* --- Alt Bilgi (Footer) --- */
+.site-footer {
+    text-align: center;
+    padding: 20px;
+    background-color: #0d0d0d;
+    border-top: 2px solid #00ff00;
+    font-size: 0.8em;
+}

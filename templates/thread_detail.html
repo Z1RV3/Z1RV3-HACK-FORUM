@@ -1,0 +1,19 @@
+<div class="comments-section">
+    {% for comment in thread.comments %}
+    <div class="comment-item">
+        <p style="font-weight: bold; color: #00cccc;">{{ comment.comment_author.username }} dedi ki:</p>
+        <p>{{ comment.content }}</p>
+
+        {% if current_user.is_authenticated and current_user.is_admin %}
+            <div style="text-align: right; margin-top: -10px;">
+                <a href="{{ url_for('delete_comment', comment_id=comment.id) }}"
+                   style="color: #ff0000; font-size: 0.8em;"
+                   onclick="return confirm('Bu yorumu silmek istediğinizden emin misiniz?');">
+                   [ X Yorumu Sil ]
+                </a>
+            </div>
+        {% endif %}
+        </div>
+    <hr>
+    {% endfor %}
+</div>

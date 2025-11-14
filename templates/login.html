@@ -1,0 +1,31 @@
+{% extends "index.html" %}
+{% block content %}
+    <div class="form-container">
+        <h2>Z1RV3'e Giriş Yap</h2>
+        <form method="POST" action="">
+            {{ form.hidden_tag() }}
+            <fieldset class="form-field">
+                <legend>Giriş Formu</legend>
+                
+                <div class="form-group">
+                    {{ form.username.label }}
+                    {{ form.username(class="text-input") }}
+                </div>
+
+                <div class="form-group">
+                    {{ form.password.label }}
+                    {{ form.password(class="text-input") }}
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; margin-top: 20px;">
+                    {{ form.remember(style="width: auto; margin-right: 10px;") }}
+                    {{ form.remember.label }}
+                </div>
+            </fieldset>
+            <div class="form-group">
+                {{ form.submit() }}
+            </div>
+        </form>
+        <p class="login-prompt">Hesabın yok mu? <a href="{{ url_for('register') }}">Kayıt Ol</a></p>
+    </div>
+{% endblock content %}

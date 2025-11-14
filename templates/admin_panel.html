@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Admin Paneli{% endblock %}
+{% block content %}
+    <h1 style="color: #ff00ff;">🛡️ Yönetim Paneli</h1>
+    <p style="color: #00cccc;">Hoş geldiniz, {{ current_user.username }}. Uygulama verilerini buradan yönetebilirsiniz.</p>
+    
+    {% if current_user.username == '4m!₺' %}
+        <p style="color: #ff00ff; font-weight: bold;">🚨 SÜPER YÖNETİCİ HESABI AKTİF.</p>
+    {% endif %}
+
+    <hr>
+
+    <h2 style="color: #00cccc;">1. Konu Yönetimi ({{ threads|length }} Konu)</h2>
+    <div class="admin-section">
+        {% for thread in threads %}
+        <div class="admin-list-item">
+            <span class="thread-info">
+                <a href="{{ url_for('thread', thread_id=thread.id) }}">
+                    {{ thread.title }}
+                </a>
+                (Yazar: {{ thread.author.username }})
+            </span>
+            
+            <a href="{{ url_for('delete_thread', thread_id=thread.id) }}" 
+               class="delete-link" 
+               onclick="return confirm('Bu konuyu ve tüm yorumları silmek istediğinizden emin misiniz?');"
+               style="color: #ff0000; font-weight: bold;">
+               [ X Konuyu Sil ]
+            </a>
+        </div>
+        {% else %}
+        <p>Hiç konu bulunamadı.</p>
+        {% endfor %}
+    </div>
+
+    <hr>
+
+    <h2 style="color: #00cccc;">2. Kullanıcı Yönetimi ({{ users|length }} Kullanıcı)</h2>
+    <div class="admin-section">
+        {% for user in users %}
+        <div class="admin-list-item user-mod-item">
+            <span class="user-info">
+                **{{ user.username }}** (ID: {{ user.id }}) 
+                {% if user.is_admin %}<span style="color: #ff00ff;">(YÖNETİCİ)</span>{% endif %}
+            </span>
+            
+            <span class="actions">
+                {% if not user.is_admin %}
+                    <a href="{{ url_for('promote_user', user_id=user.id) }}" 
+                       style="color: #ffaa00; font-weight: bold; margin-right: 15px;">
+                       [ Yönetici Yap ]
+                    </a>
+                {% endif %}
+
+                {% if not user.is_admin %}
+                <a href="{{ url_for('delete_user', user_id=user.id) }}" 
+                   class="delete-link" 
+                   onclick="return confirm('{{ user.username }} kullanıcısını kalıcı olarak silmek istediğinizden emin misiniz? Tüm içeriği silinecektir.');"
+                   style="color: #ff0000; font-weight: bold;">
+                   [ Kullanıcıyı Sil ]
+                </a>
+                {% else %}
+                <span style="color: #555;">[ Yönetici Hesabı ]</span>
+                {% endif %}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <hr>
+
+    <h2 style="color: #00cccc;">3. Son Yorumlar (Moderatör Görünümü)</h2>
+    <div class="admin-section">
+        {% for comment in comments %}
+        <div class="admin-list-item comment-mod-item">
+            <span class="comment-content" style="max-width: 70%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; display: inline-block;">
+                **{{ comment.comment_author.username }}** (Konu: <a href="{{ url_for('thread', thread_id=comment.thread.id) }}" style="text-decoration: underline;">{{ comment.thread.title }}</a>) 
+                - **Yorum:** {{ comment.content }}
+            </span>
+            
+            <a href="{{ url_for('delete_comment', comment_id=comment.id) }}" 
+               class="delete-link" 
+               onclick="return confirm('Bu yorumu silmek istediğinizden emin misiniz?');"
+               style="color: #ff0000; font-weight: bold;">
+               [ Yorumu Sil ]
+            </a>
+        </div>
+        {% else %}
+        <p>Hiç yorum bulunamadı.</p>
+        {% endfor %}
+    </div>
+
+{% endblock content %}
