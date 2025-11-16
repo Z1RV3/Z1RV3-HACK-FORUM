@@ -1,0 +1,5 @@
+{% macro render_field(field) %} {{ field.label(class="form-label") }} {% if field.type == 'TextAreaField' %} {{ field(class="form-control", rows="5") }} {% elif field.type != 'CSRFTokenField' and field.type != 'SubmitField' %} {{ field(class="form-control") }} {% endif %} {% if field.errors %}
+{% for error in field.errors %} {{ error }} {% endfor %}
+{% endif %} {% if field.description %}
+{{ field.description }}
+{% endif %} {% endmacro %}

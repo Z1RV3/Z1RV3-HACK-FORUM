@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Z1RV3 Hacktivizm Forumu - {% if title %}{{ title }}{% else %}Anasayfa{% endif %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="site-header">
+        <h1 class="logo">Z1RV3</h1>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="{{ url_for('home') }}">Anasayfa</a></li>
+                
+                {% if current_user.is_authenticated %}
+                    <li><a href="{{ url_for('new_thread') }}">Yeni Konu Aç</a></li>
+                    <li><a href="{{ url_for('logout') }}" class="login-btn">[ ÇIKIŞ ({{ current_user.username }}) ]</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('register') }}">Kayıt</a></li>
+                    <li><a href="{{ url_for('login') }}" class="login-btn">[ GİRİŞ ]</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+
+    <main class="content-area">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}
+            <section class="banner-section">
+                <img src="{{ url_for('static', filename='z1rv3_logo.png') }}" alt="Z1RV3 Logo" class="z1rv3-image">
+                <p class="tagline">"Bilgi Açık Kaynak Olmalıdır."</p>
+            </section>
+            
+            <section class="forum-list">
+                <h2>🔥 Son Aktif Konular</h2>
+                {% for thread in threads %}
+                    <div class="topic-item">
+                        <a href="{{ url_for('thread', thread_id=thread.id) }}" class="topic-title-link">
+                             <span class="topic-title">{{ thread.title }}</span>
+                        </a>
+                        <span class="topic-stats">Yazar: {{ thread.author.username }}</span>
+                    </div>
+                {% else %}
+                    <p class="no-topics">Henüz hiç konu açılmamış. İlk konuyu sen aç!</p>
+                {% endfor %}
+            </section>
+        {% endblock content %}
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2025 Z1RV3 Hacktivizm</p>
+    </footer>
+</body>
+</html>

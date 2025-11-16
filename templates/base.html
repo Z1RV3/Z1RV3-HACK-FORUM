@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}"> 
+    <title>Z1RV3 Forum - {% block title %}{% endblock %}</title>
+</head>
+<body>
+    <header>
+        <div class="navbar">
+            <a href="{{ url_for('home') }}" class="logo">Z1RV3 FORUM</a>
+            <div class="navbar-right">
+                
+                {% if current_user.is_authenticated %}
+                    
+                    {% if current_user.is_admin %} 
+                        <a href="{{ url_for('admin_panel') }}" style="color: #ff00ff; font-weight: bold;">
+                            [ 🛡️ ADMIN PANEL ]
+                        </a>
+                    {% endif %}
+
+                    <a href="{{ url_for('new_thread') }}">Yeni Konu Aç</a>
+                    <a href="{{ url_for('logout') }}">Çıkış Yap ({{ current_user.username }})</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}">Giriş Yap</a>
+                    <a href="{{ url_for('register') }}">Kayıt Ol</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <div class="content-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flash-messages">
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}
+        {% endblock content %}
+    </div>
+
+    <footer>
+        <p>&copy; 2025 Z1RV3 Forum. Tüm Hakları Saklıdır.</p>
+    </footer>
+</body>
+</html>

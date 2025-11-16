@@ -1,0 +1,38 @@
+{% extends "index.html" %} 
+{% block content %}
+    <div class="form-container">
+        <h2>Yeni Z1RV3 Hesabı Oluştur</h2>
+        <form method="POST" action="">
+            {{ form.hidden_tag() }}
+            
+            <fieldset class="form-field">
+                <legend>Kayıt Formu</legend>
+                
+                <div class="form-group">
+                    {{ form.username.label }}
+                    {{ form.username(class="text-input") }}
+                    {% for error in form.username.errors %}
+                        <span class="error-text">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.password.label }}
+                    {{ form.password(class="text-input") }}
+                    {% for error in form.password.errors %}
+                        <span class="error-text">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.confirm_password.label }}
+                    {{ form.confirm_password(class="text-input") }}
+                </div>
+            </fieldset>
+            <div class="form-group">
+                {{ form.submit() }}
+            </div>
+        </form>
+        <p class="login-prompt">Zaten bir hesabın var mı? <a href="{{ url_for('login') }}">Giriş Yap</a></p>
+    </div>
+{% endblock content %}
